@@ -33,12 +33,12 @@ class ListCVAE(pl.LightningModule):
     def forward(self, *fwd_input: torch.Tensor):
 
         """
-        :param fwd_input: userIds, slate, [metric], history, history_lengths, history_mask
+        :param fwd_input: slate, [metric], history, history_lengths, history_mask
         note that 'diversity' is a tensor of pointwise average diversitu scores
         :return: s_reconstruction: reconstructed slate
         """
 
-        slate = fwd_input[1]
+        slate = fwd_input[0]
         history_inputs = fwd_input[-3:]
 
         if self.slate_conditioning_encoder is not None and self.diversity_encoder is not None:
@@ -46,12 +46,12 @@ class ListCVAE(pl.LightningModule):
             slate_conditioning_encoding = self.slate_conditioning_encoder(slate)
             conditioning_input = [slate_conditioning_encoding, *history_inputs]
 
-        elif self.diversity_encoder is not None and len(fwd_input) > 5:
-            # we have a separate metric at fwd_input[2] ready to be encoded
-            conditioning_input = [fwd_input[2], *history_inputs]
+        elif self.diversity_encoder is not None and len(fwd_input) > 4:
+            # we have a separate metric at fwd_input[1] ready to be encoded
+            conditioning_input = [fwd_input[1], *history_inputs]
 
-        elif len(fwd_input) == 5:
-            # just condition on the history, non-diverse model
+        elif len(fwd_input) == 4:
+            # just condition on the history i.e. non-diverse model
             conditioning_input = history_inputs
 
         else:
@@ -69,15 +69,11 @@ class ListCVAE(pl.LightningModule):
 
         return match, Q_mean, Q_log_var, P_mean, P_log_var
 
-    def predict(self, *predict_input: List[torch.Tensor]) -> torch.Tensor:
+    def predict(self, *conditioning_input: List[torch.Tensor]) -> torch.Tensor:
         """
-        when predicting, the metric will be given (if we are conditioning on it
-        We have all the conditioning variables which we just need to encode without extra handling
-        :param predict_input:
-        :return:
+        when predicting, the metric will be given (if we are conditioning on it)
         """
         # drop userIds
-        conditioning_input = predict_input[1:]
         history, conditioning = self.get_history_and_encoded_conditioning(*conditioning_input)
 
         s_embed_recon = self.cvae.predict(conditioning)
@@ -91,9 +87,7 @@ class ListCVAE(pl.LightningModule):
 
     def encode_slate(self, slate):
         """
-        Here, encode slate by concatenating its tensors
-        :param slate: (batch, input_size, item_embedding_size)
-        :return:
+        Encode slate by concatenating its tensors
         """
         # get tensor of (batch_size, input_size * item_embedding_size)
         emb_slate = self.item_embeddings(slate)

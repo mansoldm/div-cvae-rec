@@ -46,7 +46,7 @@ class ListCVAEModule(ListCVAE):
         self.val_metrics = None
 
     def training_step(self, batch, batch_idx):
-        slates = batch[1]
+        slates = batch[0]
         forward_result = self(*batch)
         d = loss_function_posterior_and_prior(slates, *forward_result)
         return d

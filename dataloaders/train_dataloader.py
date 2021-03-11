@@ -1,4 +1,3 @@
-import numpy
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -9,7 +8,6 @@ from utils.data_features_utils import pad_tensor_list, get_histories
 class RandomDataset(Dataset):
     def __init__(self, num_users, histories_arr, slates_arr):
         print('Setting up Random dataset...')
-        self.userIds = np.arange(0, num_users)
         self.history = histories_arr
         self.slates = slates_arr
 
@@ -20,7 +18,6 @@ class RandomDataset(Dataset):
         randomize = np.arange(self.len_data)
         np.random.shuffle(randomize)
 
-        self.userIds = self.userIds[randomize]
         self.history = self.history[randomize]
         self.slates = self.slates[randomize]
 
@@ -31,26 +28,23 @@ class RandomDataset(Dataset):
         return self.len_data
 
     def __getitem__(self, idx):
-        userId = self.userIds[idx]
         history = self.history[idx]
         slate = torch.LongTensor(self.slates[idx])
 
-        # return userId, slate, history, history_length, history_mask
-        return userId, slate, history
+        return slate, history
 
 
 def training_collate_fn_pad(batch, shuffle_slates: bool, num_items):
-    userIds = torch.as_tensor([torch.tensor(example[0]) for example in batch])
-    slates = [example[1] for example in batch]
+    slates = [example[0] for example in batch]
     if shuffle_slates:
         for i, slate in enumerate(slates):
             slates[i] = slate[torch.randperm(len(slate))]
 
     slates = torch.stack(slates).type(torch.LongTensor)
-    history = [torch.as_tensor(example[2]) for example in batch]
+    history = [torch.as_tensor(example[1]) for example in batch]
     history, history_lengths, history_mask = pad_tensor_list(history, pad_token=num_items)
 
-    return userIds, slates, history, history_lengths, history_mask
+    return slates, history, history_lengths, history_mask
 
 
 def get_training_collate_fn_pad(shuffle_slates, num_items):

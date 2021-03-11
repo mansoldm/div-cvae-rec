@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
@@ -10,7 +9,6 @@ class ValidationTestDataset(Dataset):
         self.slate_size = slate_size
         self.cond_diversity = cond_diversity
 
-        self.userIds = np.arange(0, num_users)
         histories = [torch.as_tensor(hist) for hist, target in zip(user_full_histories, targets) if len(target) > 0]
         self.full_histories = histories
         targets = [torch.as_tensor(target) for target in targets if len(target) > 0]
@@ -22,25 +20,23 @@ class ValidationTestDataset(Dataset):
         return self.len_data
 
     def __getitem__(self, idx):
-        userId = self.userIds[idx]
         cond_diversity = self.cond_diversity
 
         history = self.full_histories[idx]
         target = self.targets[idx]
-        return userId, cond_diversity, history, target
+        return cond_diversity, history, target
 
 
 def validation_test_collate_fn_pad(batch, num_items):
-    userIds = torch.stack([torch.as_tensor(example[0]) for example in batch])
-    cond_diversity = torch.stack([torch.as_tensor(example[1]) for example in batch])
+    cond_diversity = torch.stack([torch.as_tensor(example[0]) for example in batch])
 
-    history = [torch.as_tensor(example[2]) for example in batch]
+    history = [torch.as_tensor(example[1]) for example in batch]
     history, history_lengths, history_mask = pad_tensor_list(history, pad_token=num_items)
 
-    targets = [torch.as_tensor(example[3]) for example in batch]
+    targets = [torch.as_tensor(example[2]) for example in batch]
     targets, targets_lengths, _ = pad_tensor_list(targets, num_items)
 
-    return userIds, cond_diversity, history, history_lengths, history_mask, targets, targets_lengths
+    return cond_diversity, history, history_lengths, history_mask, targets, targets_lengths
 
 
 def get_validation_test_collate_fn_pad(num_items: int):
@@ -48,7 +44,9 @@ def get_validation_test_collate_fn_pad(num_items: int):
 
 
 def get_validation_test_dataloader(args, num_users, num_items, set_name, cond_diversity=None):
-    if not cond_diversity: cond_diversity = torch.FloatTensor([0.7] * args.K)
+    if not cond_diversity:
+        cond_diversity = torch.FloatTensor([0.7] * args.K)
+
     histories = get_histories(args.dataset, args.variation, set_name)
     targets = get_targets(args.dataset, args.variation, set_name, args.truncate_targets, args.t)
     dataset = ValidationTestDataset(histories, targets, num_users, args.K, cond_diversity)
