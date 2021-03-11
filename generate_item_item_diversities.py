@@ -34,8 +34,6 @@ def cos_div(A):
     cosine = similarity * inv_mag
     cosine = cosine.T * inv_mag
 
-    # cosine = (1/2) * (1 + cosine)
-
     return 1 - cosine
 
 
