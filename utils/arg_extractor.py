@@ -81,11 +81,6 @@ def get_args(preset_args: list=None, print=True):
         new_args = extract_from_preset_args(preset_args, args)
         return print_and_return_args(new_args)
 
-    if args.filepath_to_arguments_json_file is not None:
-        args = extract_args_from_json(
-            json_file_path=args.filepath_to_arguments_json_file, existing_args_dict=args)
-        return print_and_return_args(args)
-
     if print:
         return print_and_return_args(args)
     return args
