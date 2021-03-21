@@ -25,13 +25,26 @@ def main():
 
     trainer = pl.Trainer(gpus=curr_device, auto_select_gpus=True, logger=test_csv_logger)
 
-    rec_module = ListCVAEModule.load_from_checkpoint(test_checkpoint_path,
-                                                 args=args, num_users=num_users, num_items=num_items)
-
     item_item_diversities = get_item_item_diversities(args.dataset, args.variation, args.task, num_items)
-    dpp_reranker_module = DPPReRanker(args, rec_module, num_users, num_items, item_item_diversities)
+    rec_module = ListCVAEModule.load_from_checkpoint(test_checkpoint_path,
+                                                     lr=args.lr, weight_decay=args.weight_decay,
+                                                     sample_type=args.sample_type,
+                                                     embedding_encoder_type=args.embedding_encoder,
+                                                     diversity_encoder_type=args.diversity_encoder,
+                                                     is_diverse_model=args.diverse_model,
+                                                     slate_size=args.K,
+                                                     item_embedding_size=args.item_embedding_size,
+                                                     latent_size=args.latent_size,
+                                                     encoder_hidden_size=args.encoder_hidden_size,
+                                                     decoder_hidden_size=args.decoder_hidden_size,
+                                                     prior_hidden_size=args.prior_hidden_size,
+                                                     item_item_scores=item_item_diversities, num_users=num_users,
+                                                     num_items=num_items)
 
-    test_loader = get_validation_test_dataloader(args, num_items, args.task)
+    dpp_reranker_module = DPPReRanker(args.K_rerank, rec_module, num_users, num_items, item_item_diversities)
+
+    test_loader = get_validation_test_dataloader(num_items, args.task, args.dataset, args.variation,
+                                                 args.truncate_targets, args.t, args.batch_size)
     trainer.test(model=dpp_reranker_module, test_dataloaders=test_loader)
 
 

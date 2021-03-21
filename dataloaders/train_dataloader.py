@@ -51,32 +51,32 @@ def get_training_collate_fn_pad(shuffle_slates, num_items):
     return lambda batch: training_collate_fn_pad(batch, shuffle_slates, num_items)
 
 
-def get_training_dataloader(args, num_users, num_items, set_name):
-    full_histories = get_histories(args.dataset, args.variation, set_name)
-    history_arr, slates_arr = get_histories_slates(training_interactions=full_histories, K=args.K)
+def get_training_dataloader(dataset, variation, batch_size, slate_size, shuffle_slates, num_users, num_items, set_name):
+    full_histories = get_histories(dataset, variation, set_name)
+    history_arr, slates_arr = get_histories_slates(training_interactions=full_histories, slate_size=slate_size)
     dataset = RandomDataset(num_users, history_arr, slates_arr)
 
-    loader = DataLoader(dataset, args.batch_size,
+    loader = DataLoader(dataset, batch_size,
                         shuffle=True,
-                        collate_fn=get_training_collate_fn_pad(args.shuffle_slates, num_items)
+                        collate_fn=get_training_collate_fn_pad(shuffle_slates, num_items)
                         )
 
     return loader
 
 
-def get_user_history_slate(user_history, K):
-    truncated_history = user_history[:-K].copy()
-    slate = user_history[-K:].copy()
+def get_user_history_slate(user_history, slate_size):
+    truncated_history = user_history[:-slate_size].copy()
+    slate = user_history[-slate_size:].copy()
 
     return truncated_history, slate
 
 
-def get_histories_slates(training_interactions, K):
+def get_histories_slates(training_interactions, slate_size):
     history_arr = []
     slates_arr = []
     for interaction in training_interactions:
-        history, slate = get_user_history_slate(interaction, K)
-        if len(history) > 0 and len(slate) == K:
+        history, slate = get_user_history_slate(interaction, slate_size)
+        if len(history) > 0 and len(slate) == slate_size:
             history_arr.append(history)
             slates_arr.append(slate)
 

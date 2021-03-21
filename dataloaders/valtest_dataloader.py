@@ -42,15 +42,16 @@ def get_validation_test_collate_fn_pad(num_items: int):
     return lambda batch: validation_test_collate_fn_pad(batch, num_items=num_items)
 
 
-def get_validation_test_dataloader(args, num_items, set_name, cond_diversity=None):
+def get_validation_test_dataloader(num_items, set_name, dataset, variation, truncate_targets, target_size, batch_size,
+                                   slate_size=None, cond_diversity=None):
     if cond_diversity is None:
-        cond_diversity = torch.FloatTensor([0.7] * args.K)
+        cond_diversity = torch.FloatTensor([0.7] * slate_size)
 
-    histories = get_histories(args.dataset, args.variation, set_name)
-    targets = get_targets(args.dataset, args.variation, set_name, args.truncate_targets, args.t)
+    histories = get_histories(dataset, variation, set_name)
+    targets = get_targets(dataset, variation, set_name, truncate_targets, target_size)
     dataset = ValidationTestDataset(histories, targets, cond_diversity)
 
-    loader = DataLoader(dataset, args.batch_size,
+    loader = DataLoader(dataset, batch_size,
                         shuffle=False,
                         collate_fn=get_validation_test_collate_fn_pad(num_items)
                         )

@@ -21,8 +21,10 @@ DIVERSITIES = torch.arange(start=0, end=1 + granularity, step=granularity)
 
 def train(args, num_users, num_items, result_dir, model_dir, checkpoint_dir):
     # dataloaders
-    train_loader = get_training_dataloader(args, num_users, num_items, args.task)
-    val_loader = get_validation_test_dataloader(args, num_items, args.task)
+    train_loader = get_training_dataloader(args.dataset, args.variation, args.batch_size, args.K, args.shuffle_slates,
+                                           num_users, num_items, args.task)
+    val_loader = get_validation_test_dataloader(num_items, args.task, args.dataset, args.variation,
+                                                args.truncate_targets, args.t, args.batch_size, slate_size=args.K)
 
     # training module
     item_item_scores = get_item_item_diversities(args.dataset, args.variation, args.task, num_items)
@@ -88,11 +90,14 @@ def test(args, curr_device, num_items, num_users, test_checkpoint_path, test_csv
         for test_diversity in DIVERSITIES:
             print(f'Diversity: {test_diversity}')
             cond_diversity = torch.FloatTensor([test_diversity] * args.K)
-            test_loader = get_validation_test_dataloader(args, num_items, args.task, cond_diversity)
+            test_loader = get_validation_test_dataloader(num_items, args.task, args.dataset, args.variation,
+                                                         args.truncate_targets, args.t, args.batch_size,
+                                                         cond_diversity=cond_diversity)
             trainer.test(model=module, test_dataloaders=test_loader)
 
     else:  # model without variable diversity
-        test_loader = get_validation_test_dataloader(args, num_items, args.task)
+        test_loader = get_validation_test_dataloader(num_items, args.task, args.dataset, args.variation,
+                                                     args.truncate_targets, args.t, args.batch_size, slate_size=args.K)
         trainer.test(model=module, test_dataloaders=test_loader)
 
 

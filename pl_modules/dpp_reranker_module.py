@@ -11,13 +11,15 @@ from utils.training_evaluation_utils import METRIC_KEYS, generate_slate_metrics,
 
 class DPPReRanker(pl.LightningModule):
 
-    def __init__(self, args, rec_module: pl.LightningModule, num_users, num_items, item_item_diversities: torch.FloatTensor):
+    def __init__(self, slate_size, rec_module: pl.LightningModule, num_users, num_items,
+                 item_item_diversities: torch.FloatTensor):
         """
-        :param item_item_diversities:
-        :param args: args from command line
-        :param rec_module: A ListCVAE instance
-        :param num_users: number of users in dataset
-        :param num_items: number of items in dataset
+        @param slate_size: size of output recommendation. Note that this should be smaller than the size of the candidate
+        set used by the underlying module rec_module
+        @param item_item_diversities:
+        @param rec_module: A ListCVAE instance
+        @param num_users: number of users in dataset
+        @param num_items: number of items in dataset
         """
         super(DPPReRanker, self).__init__()
         self.__dict__.update(args.__dict__)
@@ -26,8 +28,7 @@ class DPPReRanker(pl.LightningModule):
         self.num_items = num_items
 
         self.rec_module = rec_module
-        self.slate_size = args.K_rerank
-        self.userIds = np.array(list(range(num_users)))
+        self.slate_size = slate_size
         self.item_item_diversities = item_item_diversities
         self.kernel_matrix = 1 - item_item_diversities
         self.val_metrics = None
@@ -74,12 +75,7 @@ class DPPReRanker(pl.LightningModule):
         self.log_dict(d)
 
     def forward(self, *batch):
-        preds = self.rec_module(*batch)
-        emb_preds: torch.Tensor = self.diversity_embeddings(preds)
-        kernel_matrix = torch.bmm(emb_preds, emb_preds.view(0, 2, 1))
-
-        rec = dpp(kernel_matrix=kernel_matrix, max_length=self.K)
-        return rec
+        pass
 
     def training_step(self, batch, batch_idx):
         pass
