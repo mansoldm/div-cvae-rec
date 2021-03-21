@@ -99,21 +99,6 @@ class TransformerHistoryEncoder(HistoryEncoder):
         return history_encoding
 
 
-class DiversityLSTMHistoryEncoder(LSTMHistoryEncoder):
-    def __init__(self, item_item_similarities, *args):
-        super(DiversityLSTMHistoryEncoder, self).__init__(*args)
-        self.item_item_scores = item_item_similarities
-        self.output_size = self.item_embedding_size + 1
-
-    def forward(self, *args):
-        history = args[0]
-        emb_item = self.item_embeddings(history)
-        encoded_history = self.encode(emb_item, *args[1:])
-        diversities = avg_pairwise_diversity_from_matrix(history, self.item_item_scores, truncate_last=True)
-        diversities = diversities.mean(dim=-1, keepdim=True) * 5
-        return torch.cat([diversities.to(encoded_history.device), encoded_history], dim=-1)
-
-
 class SlateDiversityEncoder(EmbeddingEncoder):
     def __init__(self, item_embeddings, slate_size, diversity_type):
         super(SlateDiversityEncoder, self).__init__(nargs=1, item_embeddings=item_embeddings)
@@ -139,7 +124,7 @@ class SlateDiversityEncoderFromDiversities(nn.Module):
         return slate_diversities
 
 
-def get_embedding_encoder(embedding_encoding_type, item_embeddings, item_item_scores) -> EmbeddingEncoder:
+def get_embedding_encoder(embedding_encoding_type, item_embeddings) -> EmbeddingEncoder:
     if embedding_encoding_type == 'sum':
         return SumHistoryEncoder(item_embeddings)
 
@@ -151,9 +136,6 @@ def get_embedding_encoder(embedding_encoding_type, item_embeddings, item_item_sc
 
     elif embedding_encoding_type == 'transformer':
         return TransformerHistoryEncoder(item_embeddings)
-
-    elif embedding_encoding_type == 'div-lstm':
-        return DiversityLSTMHistoryEncoder(item_item_scores, item_embeddings)
 
     raise NotImplementedError(f'Embedding encoding type \'{embedding_encoding_type}\' not implemented!')
 
