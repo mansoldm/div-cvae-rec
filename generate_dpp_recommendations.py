@@ -31,7 +31,7 @@ def main():
     item_item_diversities = get_item_item_diversities(args.dataset, args.variation, args.task, num_items)
     dpp_reranker_module = DPPReRanker(args, rec_module, num_users, num_items, item_item_diversities)
 
-    test_loader = get_validation_test_dataloader(args, num_users, num_items, args.task)
+    test_loader = get_validation_test_dataloader(args, num_items, args.task)
     trainer.test(model=dpp_reranker_module, test_dataloaders=test_loader)
 
 

@@ -1,7 +1,7 @@
 import os
 
-import pytorch_lightning as pl
 import torch
+import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import CSVLogger
 
@@ -9,7 +9,7 @@ from dataloaders.train_dataloader import get_training_dataloader
 from dataloaders.valtest_dataloader import get_validation_test_dataloader
 from pl_modules.list_cvae_module import ListCVAEModule
 from utils.arg_extractor import get_args
-from utils.data_features_utils import get_num_users_items
+from utils.data_features_utils import get_num_users_items, get_item_item_diversities
 
 TEST_MODEL_NAME = 'test_checkpoint.ckpt'
 LAST_CHECKPOINT_NAME = 'last.ckpt'
@@ -22,10 +22,14 @@ DIVERSITIES = torch.arange(start=0, end=1 + granularity, step=granularity)
 def train(args, num_users, num_items, result_dir, model_dir, checkpoint_dir):
     # dataloaders
     train_loader = get_training_dataloader(args, num_users, num_items, args.task)
-    val_loader = get_validation_test_dataloader(args, num_users, num_items, args.task)
+    val_loader = get_validation_test_dataloader(args, num_items, args.task)
 
     # training module
-    module = ListCVAEModule(args, num_users, num_items)
+    item_item_scores = get_item_item_diversities(args.dataset, args.variation, args.task, num_items)
+    module = ListCVAEModule(args.lr, args.weight_decay, args.sample_type, args.embedding_encoder,
+                            args.diversity_encoder, args.diverse_model, args.K, args.item_embedding_size,
+                            args.latent_size, args.encoder_hidden_size, args.decoder_hidden_size,
+                            args.prior_hidden_size, item_item_scores, num_users, num_items)
     print(module)
 
     eval_every_n = (args.num_epochs, args.evaluate_every_n)[args.evaluate_every_n != 0]
@@ -61,8 +65,21 @@ def train(args, num_users, num_items, result_dir, model_dir, checkpoint_dir):
 
 def test(args, curr_device, num_items, num_users, test_checkpoint_path, test_csv_logger):
     # load pretrained model for inference
+    item_item_scores = get_item_item_diversities(args.dataset, args.variation, args.task, num_items)
     module = ListCVAEModule.load_from_checkpoint(test_checkpoint_path,
-                                                 args=args, num_users=num_users, num_items=num_items)
+                                                 lr=args.lr, weight_decay=args.weight_decay,
+                                                 sample_type=args.sample_type,
+                                                 embedding_encoder_type=args.embedding_encoder,
+                                                 diversity_encoder_type=args.diversity_encoder,
+                                                 is_diverse_model=args.diverse_model,
+                                                 slate_size=args.K,
+                                                 item_embedding_size=args.item_embedding_size,
+                                                 latent_size=args.latent_size,
+                                                 encoder_hidden_size=args.encoder_hidden_size,
+                                                 decoder_hidden_size=args.decoder_hidden_size,
+                                                 prior_hidden_size=args.prior_hidden_size,
+                                                 item_item_scores=item_item_scores, num_users=num_users,
+                                                 num_items=num_items)
     trainer = pl.Trainer(gpus=curr_device, auto_select_gpus=True, logger=test_csv_logger)
 
     # test
@@ -71,11 +88,11 @@ def test(args, curr_device, num_items, num_users, test_checkpoint_path, test_csv
         for test_diversity in DIVERSITIES:
             print(f'Diversity: {test_diversity}')
             cond_diversity = torch.FloatTensor([test_diversity] * args.K)
-            test_loader = get_validation_test_dataloader(args, num_users, num_items, cond_diversity, args.task)
+            test_loader = get_validation_test_dataloader(args, num_items, args.task, cond_diversity)
             trainer.test(model=module, test_dataloaders=test_loader)
 
     else:  # model without variable diversity
-        test_loader = get_validation_test_dataloader(args, num_users, num_items, args.task)
+        test_loader = get_validation_test_dataloader(args, num_items, args.task)
         trainer.test(model=module, test_dataloaders=test_loader)
 
 

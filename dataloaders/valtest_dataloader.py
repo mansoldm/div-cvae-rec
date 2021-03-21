@@ -5,15 +5,13 @@ from utils.data_features_utils import pad_tensor_list, get_histories, get_target
 
 
 class ValidationTestDataset(Dataset):
-    def __init__(self, user_full_histories, targets, num_users, slate_size, cond_diversity):
-        self.slate_size = slate_size
+    def __init__(self, user_full_histories, targets, cond_diversity):
         self.cond_diversity = cond_diversity
 
         histories = [torch.as_tensor(hist) for hist, target in zip(user_full_histories, targets) if len(target) > 0]
         self.full_histories = histories
         targets = [torch.as_tensor(target) for target in targets if len(target) > 0]
         self.targets = targets
-        self.responses = torch.ones([num_users, slate_size], dtype=torch.float32)
         self.len_data = len(self.full_histories)
 
     def __len__(self):
@@ -24,6 +22,7 @@ class ValidationTestDataset(Dataset):
 
         history = self.full_histories[idx]
         target = self.targets[idx]
+
         return cond_diversity, history, target
 
 
@@ -43,13 +42,13 @@ def get_validation_test_collate_fn_pad(num_items: int):
     return lambda batch: validation_test_collate_fn_pad(batch, num_items=num_items)
 
 
-def get_validation_test_dataloader(args, num_users, num_items, set_name, cond_diversity=None):
-    if not cond_diversity:
+def get_validation_test_dataloader(args, num_items, set_name, cond_diversity=None):
+    if cond_diversity is None:
         cond_diversity = torch.FloatTensor([0.7] * args.K)
 
     histories = get_histories(args.dataset, args.variation, set_name)
     targets = get_targets(args.dataset, args.variation, set_name, args.truncate_targets, args.t)
-    dataset = ValidationTestDataset(histories, targets, num_users, args.K, cond_diversity)
+    dataset = ValidationTestDataset(histories, targets, cond_diversity)
 
     loader = DataLoader(dataset, args.batch_size,
                         shuffle=False,
