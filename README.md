@@ -1,7 +1,7 @@
 ## Info 
 
 This repository provides an implementation of the direct slate optimization paradigm based on Conditional VAE, which models distributions over slates and accepts a diversity feature as input. As a result, individual diversity can be controlled at inference time. 
-Further experiments can easily be done using other metrics and/or different enc0ding strategies. In this repo we provide some alternative encodings for both user history and diversity input. 
+Further experiments can easily be done using other metrics and/or different encoding strategies. In this repo we provide some alternative encodings for both user history and diversity input. 
 Finally, this framework can easily be extended to support architectures such as a GAN or a sequence to sequence model.
 
 ## Data 
